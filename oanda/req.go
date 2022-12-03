@@ -267,5 +267,9 @@ func NewOrderData(goq *Goquest, id string) *OrderData {
 	res := &GetOrder{}
 	ep := "/accounts/" + goq.Auth.Id + "/orders/" + id
 	goq.Get(ep, nil, res)
+	if res == nil {
+		fmt.Println(res.statusCode)
+		return nil
+	}
 	return res.Data
 }

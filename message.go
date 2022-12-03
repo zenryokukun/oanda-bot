@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	BOT_NAME = "ボッター"
+	BOT_NAME = "Wavenauts"
 	BOT_VER  = "v1.0"
 )
 

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"time"
 
@@ -19,6 +20,7 @@ var TRADE_FILE = "./trade.json"
 type Param struct {
 	Inst     string  // Instrument: "USD_JPY","EUR_USD"等
 	Gran     string  // granularity："M5","H4",等。
+	Seconds  int     // granularityを秒数で表したもの。"M5" -> 300
 	Span     int     // Gran何個分で予測するか
 	Thresh   float64 // レンジ判定の閾値
 	ProfRate float64 // 利確ライン
@@ -49,6 +51,24 @@ func position(goq *oanda.Goquest, prm *Param) *oanda.PositionData {
 	return data
 }
 
+// マーケットが空いているかチェック。パラメタは最後のロウソク足を想定
+// 現在時刻と最後のロウソク足を比較し、prm.Granの3倍以上開いていたら閉じていると判断させる。
+func isMarketOpen(cs oanda.CandleStick, prm *Param) bool {
+	ct, err := time.Parse(layout(), cs.Time)
+	if err != nil {
+		fmt.Printf("marketopen:Could not parse time:%v\n", cs.Time)
+		return false
+	}
+	now := time.Now().Unix()
+	diff := now - ct.Unix()
+	// 3倍を超えていたらマーケットが閉じていると判断
+	if diff >= int64(prm.Seconds)*3 {
+		fmt.Printf("Market might be closed...Last:%v,Now:%v,diff:%v\n", ct.Unix(), time.Now().UTC(), diff)
+		return false
+	}
+	return true
+}
+
 // パラメタをもとにロウソク足取得
 func candles(goq *oanda.Goquest, prm *Param) oanda.CandleSticks {
 	span := prm.Span + 1 // ロウソク足が完成していないものが入っている可能性があるので＋1
@@ -60,6 +80,10 @@ func candles(goq *oanda.Goquest, prm *Param) oanda.CandleSticks {
 		// 長さを超えている場合はslice
 		st := len(sticks) - prm.Span
 		sticks = sticks[st:]
+		// 所定の長さに達していなかったらログ
+		if len(sticks) != prm.Span {
+			fmt.Printf("Stick length does not match Param. Stick.length:%v\n", len(sticks))
+		}
 	}
 	return sticks
 }
@@ -90,7 +114,7 @@ func tradeSide(p *oanda.PositionData) string {
 	if p.Long.Units > 0 {
 		return "BUY"
 	}
-	if p.Short.Units > 0 {
+	if p.Short.Units < 0 {
 		return "SELL"
 	}
 	return ""
@@ -159,6 +183,10 @@ func waitOrderFill(goq *oanda.Goquest, orderID string, sec int) bool {
 	// 300ミリ秒ごとに実行
 	for i := 0.3; i < float64(sec); i += 0.3 {
 		order := oanda.NewOrderData(goq, orderID)
+		if order == nil {
+			fmt.Printf("Could not get orderID:%v \n", orderID)
+			continue
+		}
 		status := order.OrderStatus()
 		if status == "FILLED" {
 			return true
@@ -181,6 +209,8 @@ func marketOrder(goq *oanda.Goquest, inst, side string, units int, ch chan strin
 	id := order.Id()
 	// IDが取得できない場合はリターン
 	if id == "" {
+		fmt.Printf("marketOrder: id was empty:%v", id)
+		ch <- ""
 		return
 	}
 	// orderが完了するまで待つ
@@ -198,6 +228,8 @@ func closeOrder(goq *oanda.Goquest, pos *oanda.PositionData, prm *Param, ch chan
 	posSide := tradeSide(pos)
 	closeSide := closingSide(posSide)
 	units := pos.Units()
+	// marketOrderでSELL時はunit *= -1にする処理があるので、ここでは絶対値にしておく
+	units = int(math.Abs(float64(units)))
 	marketOrder(goq, prm.Inst, closeSide, units, ch)
 }
 
@@ -251,6 +283,11 @@ func frame(goq *oanda.Goquest, prm *Param) *Message {
 		return msg
 	}
 
+	// マーケットが閉じているっぽければ処理なし
+	if !isMarketOpen(sticks[len(sticks)-1], prm) {
+		return msg
+	}
+
 	// 現在価格
 	current := price.Mid()
 
@@ -301,6 +338,7 @@ func frame(goq *oanda.Goquest, prm *Param) *Message {
 		// spreadが許容値になるまで待つ。待っても収まらない場合は取引しない。
 		price = waitSpread(goq, price, prm, 15)
 		if price != nil {
+			fmt.Println("closing!!!")
 			go closeOrder(goq, pos, prm, chOrder)
 			// 結局待つwww
 			<-chOrder
@@ -318,6 +356,7 @@ func frame(goq *oanda.Goquest, prm *Param) *Message {
 		if len(side) == 0 || willClose {
 			price = waitSpread(goq, price, prm, 15)
 			if price != nil {
+				fmt.Println("opening!!!")
 				go marketOrder(goq, prm.Inst, dec, prm.Units, chOrder)
 				<-chOrder
 				// tradeグラフ用データをファイルに出力
@@ -364,20 +403,35 @@ func frame(goq *oanda.Goquest, prm *Param) *Message {
 func main() {
 	goq := oanda.NewGoquest("./key.json", "live")
 	prm := loadParam("./param.json")
-	prettyPrint(oanda.NewAccount(goq))
-	_ = prm
-	// tracker := NewTracker(300)
-	// _ = goq
-	// _ = prm
-	// for {
-	// 	msg := frame(goq, prm)
-	// 	tick(300)
-	// 	fmt.Println("15sec has passed!")
-	// 	if tracker.IsPassed() {
-	// 		twitter := NewTwitter("./twitter.json")
-	// 		twitter.tweet(msg.String(), nil)
-	// 	}
-	// }
+	// 4hに設定
+	tracker := NewTracker(4 * 60 * 60)
+	prm.Gran = "M1"
+	prm.Inst = "EUR_USD"
+	prm.Units = 100
+	prm.LossRate = 0.001
+	prm.ProfRate = 0.001
+	prm.Seconds = 60
+	_ = tracker
+
+	// posSide := tradeSide(pos)
+	// closeSide := closingSide(posSide)
+	// units := pos.Units()
+	// fmt.Println(posSide, closeSide, units, pos.Has())
+	// fmt.Printf("%+v\n", pos.Short.Units)
+	// ch := make(chan string, 1)
+	// go closeOrder(goq, pos, prm, ch)
+	// v := <-ch
+	// fmt.Println(v)
+
+	for {
+		tick(int64(prm.Seconds))
+		fmt.Println(time.Now())
+		msg := frame(goq, prm)
+		if tracker.IsPassed() {
+			twitter := NewTwitter("./twitter.json")
+			twitter.tweet(msg.String(), nil)
+		}
+	}
 }
 
 // Test Codes

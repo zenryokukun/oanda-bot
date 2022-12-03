@@ -11,19 +11,6 @@ import (
 	_ "github.com/ChimeraCoder/anaconda"
 )
 
-// var MSG = []string{
-// 	`Hello,World.私の名前は「長い棒」。"うまい棒"と同じイントネーションです`,
-// 	`前代未聞、前人未踏、空前絶後で抱腹絶倒、、、いずれも私を形容する言葉です`,
-// 	`俺は「長い棒」。\n普段はただの牛蒡。\nでも真の姿、まさに象。`,
-// 	`感じろ、価格のFLOW。久しぶりのチャンスだろう？\n長い棒、今こそGROW。\大穴目掛けてぶちかませ、渾身のBLOW。`,
-// }
-
-/*
-Hello,World!私は「長い棒」。普段はただの牛蒡。でも真の姿、まさに象。
-感じろ、価格のFLOW。久しぶりのチャンスだろう？
-長い棒、見境なくぶちかませ!渾身のBLOW。見せろ、世界に、絶望と希望！！
-*/
-
 type keys struct {
 	API_KEY       string `json:"API_KEY"`
 	API_SECRET    string `json:"API_SECRET"`

@@ -357,11 +357,15 @@ func (p *Position) Extract() *PositionData {
 }
 
 // Long,Shortいずれかを保有しているか
+// Short.Unitsはマイナスで返ってくるので注意
 func (p *PositionData) Has() bool {
-	if p.Long == nil || p.Short == nil {
-		return false
+	// if p.Long == nil || p.Short == nil {
+	// 	return false
+	// }
+	if p.Long != nil && p.Long.Units > 0 {
+		return true
 	}
-	if p.Long.Units > 0 || p.Short.Units > 0 {
+	if p.Short != nil || p.Long.Units < 0 {
 		return true
 	}
 	return false
@@ -377,7 +381,7 @@ func (p *PositionData) Side() *PositionDataSide {
 	if p.Long.Units > 0 {
 		return p.Long
 	}
-	if p.Short.Units > 0 {
+	if p.Short.Units < 0 {
 		return p.Short
 	}
 	return nil
@@ -397,7 +401,7 @@ func (p *PositionData) Units() int {
 // trade idsを取得
 func (p *PositionData) Ids() string {
 	side := p.Side()
-	if side.TradeIDs == nil {
+	if side == nil || side.TradeIDs == nil {
 		return ""
 	}
 	ids := ""
