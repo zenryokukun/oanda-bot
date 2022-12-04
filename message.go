@@ -32,7 +32,7 @@ func (m *Message) String() string {
 	un := strconv.Itoa(m.units)
 
 	msg := "[" + time.Now().Format("2006-01-02 15:04") + "]" + "\n"
-	msg += "🐋" + BOT_NAME + BOT_VER + "🐋" + "\n"
+	msg += "🐋" + BOT_NAME + "@" + BOT_VER + "🐋" + "\n"
 	msg += "💲" + "実現損益 :" + rp + "💲" + "\n"
 	msg += "🥎" + "保有量 :" + un + "🥎" + "\n"
 	msg += "💰" + "未実現損益:" + up + "💰" + "\n"
