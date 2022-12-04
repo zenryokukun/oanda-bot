@@ -74,7 +74,7 @@ func isMarketOpen(cs oanda.CandleStick, prm *Param) bool {
 	diff := now - ct.Unix()
 	// 3倍を超えていたらマーケットが閉じていると判断
 	if diff >= int64(prm.Seconds)*3 {
-		fmt.Printf("Market might be closed...Last:%v,Now:%v,diff:%v\n", ct.Unix(), time.Now().UTC(), diff)
+		// fmt.Printf("Market might be closed...Last:%v,Now:%v,diff:%v\n", ct.Unix(), time.Now().UTC(), diff)
 		return false
 	}
 	return true
@@ -334,6 +334,7 @@ func frame(goq *oanda.Goquest, prm *Param) *Message {
 		// 平均取得価格
 		posData := pos.Side()
 		avg := posData.Average
+
 		if isLossFilled(current, avg, side, prm) {
 			willClose = true
 		}
@@ -349,7 +350,6 @@ func frame(goq *oanda.Goquest, prm *Param) *Message {
 		// spreadが許容値になるまで待つ。待っても収まらない場合は取引しない。
 		price = waitSpread(goq, price, prm, 15)
 		if price != nil {
-			fmt.Println("closing!!!")
 			go closeOrder(goq, pos, prm, chOrder)
 			// 結局待つwww
 			<-chOrder
@@ -367,7 +367,6 @@ func frame(goq *oanda.Goquest, prm *Param) *Message {
 		if len(side) == 0 || willClose {
 			price = waitSpread(goq, price, prm, 15)
 			if price != nil {
-				fmt.Println("opening!!!")
 				go marketOrder(goq, prm.Inst, dec, prm.Units, chOrder)
 				<-chOrder
 				// tradeグラフ用データをファイルに出力
@@ -416,39 +415,13 @@ func main() {
 	prm := loadParam("./param.json")
 	// 4hに設定
 	tracker := NewTracker(4 * 60 * 60)
-	prm.Gran = "M1"
-	prm.Inst = "EUR_USD"
-	prm.Units = 100
-	prm.LossRate = 0.001
-	prm.ProfRate = 0.001
-	prm.Seconds = 60
-
-	_ = goq
-	_ = tracker
-
-	// posSide := tradeSide(pos)
-	// closeSide := closingSide(posSide)
-	// units := pos.Units()
-	// fmt.Println(posSide, closeSide, units, pos.Has())
-	// fmt.Printf("%+v\n", pos.Short.Units)
-	// ch := make(chan string, 1)
-	// go closeOrder(goq, pos, prm, ch)
-	// v := <-ch
-	// fmt.Println(v)
-	// cmd := exec.Command(genPyCommand(), IMG_PYSCRIPT, IMG_PATH)
-	// b, err := cmd.CombinedOutput()
-	// if err != nil {
-	// 	//err時は表示
-	// 	fmt.Println(err)
-	// 	fmt.Println(string(b))
-	// }
-	// twitter := NewTwitter("./twitter.json")
-	// twitter.tweetImage("hello,world", IMG_PATH)
 
 	for {
+		// 所定の時刻まで待つ
 		tick(int64(prm.Seconds))
-		fmt.Println(time.Now())
+		// 取引処理を実行し、結果のメッセージを取得
 		msg := frame(goq, prm)
+		// trackerで指定した事項を過ぎていたら、tweet用画像生成し、tweet。
 		if tracker.IsPassed() {
 			cmd := exec.Command(genPyCommand(), IMG_PYSCRIPT, IMG_PATH)
 			b, err := cmd.CombinedOutput()
