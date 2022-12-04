@@ -1,6 +1,7 @@
 import datetime
 import matplotlib.pyplot as plt
 import json
+import sys
 
 BALANCE_F = "./balance.json"
 TRADE_F = "./trade.json"
@@ -17,7 +18,7 @@ def time_str(jobj: dict):
     jobj["time"] = [datetime.datetime.fromtimestamp(v) for v in jobj["X"]]
 
 
-def graph():
+def graph(img_path: str):
     # ファイルから読み取る
     bl = load(BALANCE_F)
     tr = load(TRADE_F)
@@ -64,17 +65,21 @@ def graph():
     ax2.set_ylabel("Profit/Loss")
     ax2.plot(bl["time"], bl["TotalPL"], label="TotalPL")
 
-    plt.title("Oanda Trade Result(4Hour)")
+    plt.title("Oanda Trade Result")
     plt.xlabel("TIME")
     ax.legend(loc=2)
     ax2.legend(loc=3)
     plt.gcf().autofmt_xdate()
     plt.tight_layout()
     plt.grid(True)
-    plt.show()
+    # plt.show()
+    plt.savefig(img_path)
 
 
 if __name__ == "__main__":
-    # import sys
-    # print(sys.argv)
-    graph()
+    try:
+        tpath = sys.argv[1]
+    except IndexError as err:
+        print(err)
+        sys.exit()
+    graph(tpath)

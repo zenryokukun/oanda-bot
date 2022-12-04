@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"os/exec"
 	"time"
 
 	"github.com/zenryokukun/oanda-bot/oanda"
@@ -13,8 +14,18 @@ import (
 
 // 稼働時の総利益。現在総歴-稼働時の総利益 = BOTの総利益　とするため。
 var INITIAL_BALANCE = 500000.0
-var BALANCE_FILE = "./balance.json"
+
+// 総利益の推移を出力するファイル
+var TOTAL_PROF_FILE = "./balance.json"
+
+// 取引履歴を出力するファイル
 var TRADE_FILE = "./trade.json"
+
+// 画像生成するpythonファイルのパス
+var IMG_PYSCRIPT = "./graph.py"
+
+// tweet用画像のパス
+var IMG_PATH = "./tweet.png"
 
 // ロジックに使うパラメタ。コンパイル面倒だからファイルから読み取る。
 type Param struct {
@@ -395,7 +406,7 @@ func frame(goq *oanda.Goquest, prm *Param) *Message {
 	addTotalPLMsg(tpl, msg)
 
 	// balance用データをファイルに出力
-	writeBalance(BALANCE_FILE, mlen, openTime, current, upl)
+	writeBalance(TOTAL_PROF_FILE, mlen, openTime, current, upl)
 
 	return msg
 }
@@ -411,6 +422,8 @@ func main() {
 	prm.LossRate = 0.001
 	prm.ProfRate = 0.001
 	prm.Seconds = 60
+
+	_ = goq
 	_ = tracker
 
 	// posSide := tradeSide(pos)
@@ -422,14 +435,30 @@ func main() {
 	// go closeOrder(goq, pos, prm, ch)
 	// v := <-ch
 	// fmt.Println(v)
+	// cmd := exec.Command(genPyCommand(), IMG_PYSCRIPT, IMG_PATH)
+	// b, err := cmd.CombinedOutput()
+	// if err != nil {
+	// 	//err時は表示
+	// 	fmt.Println(err)
+	// 	fmt.Println(string(b))
+	// }
+	// twitter := NewTwitter("./twitter.json")
+	// twitter.tweetImage("hello,world", IMG_PATH)
 
 	for {
 		tick(int64(prm.Seconds))
 		fmt.Println(time.Now())
 		msg := frame(goq, prm)
 		if tracker.IsPassed() {
+			cmd := exec.Command(genPyCommand(), IMG_PYSCRIPT, IMG_PATH)
+			b, err := cmd.CombinedOutput()
+			if err != nil {
+				//err時は表示
+				fmt.Println(err)
+				fmt.Println(string(b))
+			}
 			twitter := NewTwitter("./twitter.json")
-			twitter.tweet(msg.String(), nil)
+			twitter.tweetImage(msg.String(), IMG_PATH)
 		}
 	}
 }

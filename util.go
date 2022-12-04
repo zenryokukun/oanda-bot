@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"runtime"
 	"time"
 )
 
@@ -24,4 +25,17 @@ func toUnix(fmtTime string) int64 {
 func prettyPrint(i interface{}) {
 	b, _ := json.MarshalIndent(i, "", "  ")
 	fmt.Println(string(b))
+}
+
+//Linux,Windowsによってコマンドが違うのでここで解決する
+func genPyCommand() string {
+	//"windows" or "linux"
+	switch runtime.GOOS {
+	case "windows":
+		return "python"
+	case "linux":
+		return "python3"
+	default:
+		return ""
+	}
 }
