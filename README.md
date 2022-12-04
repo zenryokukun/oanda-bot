@@ -3,6 +3,7 @@
 Oanda APIを使った取引bot。APIのドキュメントはこちら：  
 https://developer.oanda.com/rest-live-v20/introduction/
 
+
 ## 必要なファイル
 - <u>key.json</u>  
   Oanda APIの口座IDとトークン
@@ -76,3 +77,20 @@ https://developer.oanda.com/rest-live-v20/introduction/
 
 - 「必要なファイル」をプロジェクトファイルの直下に配置
 - ./bring.shを実行。コンパイルし実行ファイルをプロジェクトファイルの直下にmvしてくれる。
+- pm2で起動
+```bash
+# 初回起動
+pm2 start oanda-bot
+pm2 save
+```
+```bash
+# 再起動
+pm2 restart oanda-bot
+```
+
+## PM2備忘
+```bash
+pm2 show "your file name"
+pm2 status
+pm2 stop "your file name"
+```
