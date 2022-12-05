@@ -13,7 +13,7 @@ import (
 )
 
 // 稼働時の総利益。現在総歴-稼働時の総利益 = BOTの総利益　とするため。
-var INITIAL_BALANCE = 500000.0
+var INITIAL_BALANCE = 250000.0
 
 // 総利益の推移を出力するファイル
 var TOTAL_PROF_FILE = "./balance.json"
