@@ -475,18 +475,7 @@ func trade() {
 }
 
 func main() {
-	// trade()
-	goq := oanda.NewGoquest("./key.json", "live")
-	prm := loadParam("./param.json")
-	sticks := candlesLikeBTest(goq, prm)
-	// sticksはprm.Span+1になっているはずなので、直近のデータをpop。
-	fmt.Println(sticks[len(sticks)-1].Time)
-	sticks = sticks[:len(sticks)-1]
-	// pop後に長さがprm.Spanと一致しない場合はログ。
-	if len(sticks) != prm.Span {
-		fmt.Println("sticks length was:", len(sticks))
-	}
-	prettyPrint(sticks)
+	trade()
 }
 
 // Test Codes
