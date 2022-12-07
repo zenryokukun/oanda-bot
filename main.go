@@ -294,7 +294,7 @@ func addTotalPLMsg(pl float64, m *Message) {
 // ロジック部分
 func frame(goq *oanda.Goquest, prm *Param) *Message {
 	pos := position(goq, prm)
-	sticks := candles(goq, prm)
+	sticks := candlesLikeBTest(goq, prm)
 	price := latestPrice(goq, prm)
 
 	// graph用データの最大個数
