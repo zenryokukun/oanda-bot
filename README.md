@@ -77,7 +77,8 @@ https://developer.oanda.com/rest-live-v20/introduction/
 
 - 「必要なファイル」をプロジェクトファイルの直下に配置
 - ./bring.shを実行。コンパイルし実行ファイルをプロジェクトファイルの直下にmvしてくれる。
-- pm2で起動
+- pm2で起動。
+- 修正などで再コンパイルした時は、`pm2 restart your-app-name`を忘れずに。
 ```bash
 # 初回起動
 pm2 start oanda-bot

@@ -99,6 +99,28 @@ func candles(goq *oanda.Goquest, prm *Param) oanda.CandleSticks {
 	return sticks
 }
 
+// candlesをよりbacktestに近づけた版
+func candlesLikeBTest(goq *oanda.Goquest, prm *Param) oanda.CandleSticks {
+	// ロウソク足が完成していないものが入っている可能性があるので+1
+	// 最後のロウソク足を現在値として扱う。それを除いてprm.Span分データが欲しいので、さらに+1
+	span := prm.Span + 2
+	cd := oanda.NewCandles(goq, span, prm.Gran, prm.Inst, "", "", "")
+	sticks := cd.ExtractMid()
+	if sticks != nil {
+		// 完成したロウソク足のみ抽出
+		sticks = sticks.Complete()
+		// 長さを超えている場合はslice。
+		// sticksが全てComplete状態ならprm.Span+2の長さになり得るが、想定はしていない。
+		st := len(sticks) - 1 - prm.Span
+		sticks = sticks[st:]
+		// prm.Span + 1 と長さが一致しない場合は想定外。ログを吐く。
+		if len(sticks) != prm.Span+1 {
+			fmt.Printf("Stick length does not match Param. Stick.length:%v\n", len(sticks))
+		}
+	}
+	return sticks
+}
+
 // 現在のPrice取得
 func latestPrice(goq *oanda.Goquest, prm *Param) *oanda.Price {
 	pr := oanda.NewPricing(goq, prm.Inst).Latest(prm.Inst)
@@ -308,8 +330,15 @@ func frame(goq *oanda.Goquest, prm *Param) *Message {
 		return msg
 	}
 
-	// 最後のロウソク足のopentime
+	// 最後のロウソク足のopentime。現在時刻とはprm.Gran分前の時間になるので留意。
 	openTime := toUnix(sticks[len(sticks)-1].Time)
+
+	// sticksはprm.Span+1になっているはずなので、直近のデータをpop。
+	sticks = sticks[:len(sticks)-1]
+	// pop後に長さがprm.Spanと一致しない場合はログ。
+	if len(sticks) != prm.Span {
+		fmt.Println("sticks length was:", len(sticks))
+	}
 
 	// 最大値と最小値をセット。AddWrapしてるが今のところ使う予定なし
 	highs, lows := sticks.Extract("H"), sticks.Extract("L")
@@ -355,6 +384,8 @@ func frame(goq *oanda.Goquest, prm *Param) *Message {
 			<-chOrder
 			// tradeグラフ用データをファイルに出力
 			writeTrade(TRADE_FILE, mlen, openTime, current, closingSide(side), "CLOSE")
+			// Messageにcloseフラグをつける
+			msg.close()
 		}
 	}
 
@@ -370,7 +401,10 @@ func frame(goq *oanda.Goquest, prm *Param) *Message {
 				go marketOrder(goq, prm.Inst, dec, prm.Units, chOrder)
 				<-chOrder
 				// tradeグラフ用データをファイルに出力
-				writeTrade(TRADE_FILE, mlen, openTime, current, closingSide(side), "OPEN")
+				// writeTrade(TRADE_FILE, mlen, openTime, current, closingSide(side), "OPEN")
+				writeTrade(TRADE_FILE, mlen, openTime, current, dec, "OPEN")
+				// Messageにopenフラグをつける
+				msg.open()
 			}
 		}
 	}
@@ -410,19 +444,23 @@ func frame(goq *oanda.Goquest, prm *Param) *Message {
 	return msg
 }
 
-func main() {
+func trade() {
 	goq := oanda.NewGoquest("./key.json", "live")
 	prm := loadParam("./param.json")
+
+	// trackerは廃止。取引したフレームでツイートするように変更
+	// ***********************************************
 	// 4hに設定
-	tracker := NewTracker(4 * 60 * 60)
+	// tracker := NewTracker(4 * 60 * 60)
+	// ***********************************************
 
 	for {
 		// 所定の時刻まで待つ
 		tick(int64(prm.Seconds))
 		// 取引処理を実行し、結果のメッセージを取得
 		msg := frame(goq, prm)
-		// trackerで指定した事項を過ぎていたら、tweet用画像生成し、tweet。
-		if tracker.IsPassed() {
+		// openかclose処理がされていたらツイート
+		if msg.didClose || msg.didOpen {
 			cmd := exec.Command(genPyCommand(), IMG_PYSCRIPT, IMG_PATH)
 			b, err := cmd.CombinedOutput()
 			if err != nil {
@@ -434,6 +472,21 @@ func main() {
 			twitter.tweetImage(msg.String(), IMG_PATH)
 		}
 	}
+}
+
+func main() {
+	// trade()
+	goq := oanda.NewGoquest("./key.json", "live")
+	prm := loadParam("./param.json")
+	sticks := candlesLikeBTest(goq, prm)
+	// sticksはprm.Span+1になっているはずなので、直近のデータをpop。
+	fmt.Println(sticks[len(sticks)-1].Time)
+	sticks = sticks[:len(sticks)-1]
+	// pop後に長さがprm.Spanと一致しない場合はログ。
+	if len(sticks) != prm.Span {
+		fmt.Println("sticks length was:", len(sticks))
+	}
+	prettyPrint(sticks)
 }
 
 // Test Codes
