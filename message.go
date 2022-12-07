@@ -7,7 +7,7 @@ import (
 
 var (
 	BOT_NAME = "Wavenauts"
-	BOT_VER  = "v1.0"
+	BOT_VER  = "v1.1"
 )
 
 // tweet用
