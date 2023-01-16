@@ -18,6 +18,27 @@ def time_str(jobj: dict):
     jobj["time"] = [datetime.datetime.fromtimestamp(v) for v in jobj["X"]]
 
 
+def slice_trade(start_time, tobj):
+    """tobj["time"]の、start_timeより前の部分を落とす
+
+    Args:
+        start_time (datetime): balance["time"]の最初の値を想定
+        tobj (dict): trade.jsonをloadしたもの
+    """
+    i = 0
+    for i, t in enumerate(tobj["time"]):
+        if t > start_time:
+            break
+
+    tobj["time"] = tobj["time"][i:]
+    tobj["X"] = tobj["X"][i:]
+    tobj["Y"] = tobj["Y"][i:]
+    tobj["Action"] = tobj["Action"][i:]
+    tobj["Side"] = tobj["Side"][i:]
+
+    return tobj
+
+
 def graph(img_path: str):
     # ファイルから読み取る
     bl = load(BALANCE_F)
@@ -25,6 +46,8 @@ def graph(img_path: str):
     # unix時間を文字列に変換した値をセット
     time_str(bl)
     time_str(tr)
+    # tradeがグラフからはみ出るので、最初のbl["time"]より前のデータは落とす。
+    tr = slice_trade(bl["time"][0], tr)
     # trデータを分割
     openbuy_x = []
     openbuy_y = []
