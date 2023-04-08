@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"github.com/ChimeraCoder/anaconda"
-	_ "github.com/ChimeraCoder/anaconda"
 )
 
 type keys struct {

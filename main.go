@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/zenryokukun/gotweet"
 	"github.com/zenryokukun/oanda-bot/oanda"
 	"github.com/zenryokukun/surfergopher/minmax"
 )
@@ -468,8 +469,8 @@ func trade() {
 				fmt.Println(err)
 				fmt.Println(string(b))
 			}
-			twitter := NewTwitter("./twitter.json")
-			twitter.tweetImage(msg.String(), IMG_PATH)
+			twitter := gotweet.NewTwitter("./twitter.json")
+			twitter.Tweet(msg.String(), IMG_PATH)
 		}
 	}
 }
